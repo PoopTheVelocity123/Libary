@@ -1,0 +1,136 @@
+local library = {}
+
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+function library:CreateWindow(config)
+    local windowName = config.Name or "LibraryWindow"
+    local cornerRadius = config.CornerRadius or 0
+    local iconId = config.Icon
+    local iconSize = config.IconSize or UDim2.new(0, 24, 0, 24)
+    local showTopBar = config.TopBar or false
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = windowName .. "_Gui"
+    screenGui.Parent = CoreGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Create a white border frame first
+    local borderFrame = Instance.new("Frame")
+    borderFrame.Name = "BorderFrame"
+    borderFrame.Parent = screenGui
+    -- FIX: Made the border 1px larger on all sides (2px total increase)
+    borderFrame.Size = (config.Size or UDim2.new(0, 800, 0, 900)) + UDim2.new(0, 2, 0, 2)
+    borderFrame.Position = UDim2.new(0.5, -borderFrame.Size.X.Offset / 2, 0.5, -borderFrame.Size.Y.Offset / 2)
+    borderFrame.BackgroundColor3 = Color3.new(1, 1, 1) -- White color
+    borderFrame.BorderSizePixel = 0
+    borderFrame.ZIndex = 1
+
+    -- Apply rounded corners to the border frame
+    local borderCorner = Instance.new("UICorner")
+    borderCorner.CornerRadius = UDim.new(0, cornerRadius)
+    borderCorner.Parent = borderFrame
+
+    -- Create the main frame (the black box)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Parent = screenGui
+    mainFrame.Size = config.Size or UDim2.new(0, 800, 0, 900)
+    mainFrame.Position = UDim2.new(0.5, -mainFrame.Size.X.Offset / 2, 0.5, -mainFrame.Size.Y.Offset / 2)
+    mainFrame.BackgroundColor3 = Color3.new(0, 0, 0) -- Black color
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.ZIndex = 2 -- Render on top of the border
+
+    -- Apply rounded corners to the main frame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, cornerRadius)
+    corner.Parent = mainFrame
+
+    -- Create the icon if an IconId is provided
+    if iconId then
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.Parent = mainFrame
+        icon.BackgroundTransparency = 1
+        icon.BorderSizePixel = 0
+        icon.Image = iconId
+        icon.Size = iconSize
+        icon.Position = UDim2.new(0, 8, 0, 8)
+        icon.ZIndex = 2
+    end
+
+    -- Create the lines if TopBar is enabled
+    if showTopBar then
+        local padding = 12 -- Padding for the bottom line
+        local sidePadding = 24 -- Side padding for the icon's vertical line
+        local boxHeight = iconSize.Y.Offset + (padding * 2)
+
+        -- Vertical line next to the icon
+        local rightLine = Instance.new("Frame")
+        rightLine.Parent = mainFrame
+        rightLine.Size = UDim2.new(0, 1, 0, boxHeight)
+        rightLine.Position = UDim2.new(0, iconSize.X.Offset + sidePadding, 0, 0)
+        rightLine.BackgroundColor3 = Color3.new(1, 1, 1)
+        rightLine.BorderSizePixel = 0
+        rightLine.ZIndex = 2
+
+        -- Bottom line that goes through the whole UI
+        local bottomLine = Instance.new("Frame")
+        bottomLine.Parent = mainFrame
+        bottomLine.Size = UDim2.new(1, 0, 0, 1)
+        bottomLine.Position = UDim2.new(0, 0, 0, boxHeight - 1)
+        bottomLine.BackgroundColor3 = Color3.new(1, 1, 1)
+        bottomLine.BorderSizePixel = 0
+        bottomLine.ZIndex = 2
+    end
+
+    -- Dragging logic (applies to both frames)
+    local dragging = false
+    local dragStart = nil
+    local startPos_main = nil
+    local startPos_border = nil
+
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos_main = mainFrame.Position
+            startPos_border = borderFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            -- Update the position of BOTH frames
+            mainFrame.Position = UDim2.new(
+                startPos_main.X.Scale,
+                startPos_main.X.Offset + delta.X,
+                startPos_main.Y.Scale,
+                startPos_main.Y.Offset + delta.Y
+            )
+            borderFrame.Position = UDim2.new(
+                startPos_border.X.Scale,
+                startPos_border.X.Offset + delta.X,
+                startPos_border.Y.Scale,
+                startPos_border.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    return {
+        Gui = screenGui,
+        Window = mainFrame,
+        Destroy = function()
+            screenGui:Destroy()
+        end
+    }
+end
+
+return library

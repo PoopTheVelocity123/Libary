@@ -1,0 +1,145 @@
+--[[
+    My Roblox UI Library
+    Place this code on a service like Pastebin or GitHub Gist.
+]]
+
+local library = {}
+
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- This function creates a new window
+function library:CreateWindow(config)
+    -- Ensure a name is provided for the GUI
+    if not config or not config.Name then
+        warn("Library: CreateWindow requires a 'Name' in the config table.")
+        return nil
+    end
+
+    -- Check if a GUI with this name already exists and destroy it
+    local existingGui = CoreGui:FindFirstChild(config.Name .. "_Gui")
+    if existingGui then
+        existingGui:Destroy()
+    end
+
+    -- Create the main ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = config.Name .. "_Gui"
+    screenGui.Parent = CoreGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Create the main frame (the window)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Parent = screenGui
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Size = config.Size or UDim2.new(0, 400, 0, 300)
+    mainFrame.Position = UDim2.new(0.5, -mainFrame.Size.X.Offset / 2, 0.5, -mainFrame.Size.Y.Offset / 2)
+    mainFrame.Active = true
+
+    -- Add a shadow for a modern look
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.Parent = mainFrame
+    shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://6014261993"
+    shadow.ImageColor3 = Color3.new(0, 0, 0)
+    shadow.ImageTransparency = 0.5
+    shadow.Position = UDim2.new(0.5, 0, 0.5, 6)
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+    shadow.Size = UDim2.new(1, 20, 1, 20)
+    shadow.ZIndex = -1
+
+    -- Create the title bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Parent = mainFrame
+    titleBar.Size = UDim2.new(1, 0, 0, 32)
+    titleBar.Position = UDim2.new(0, 0, 0, 0)
+    titleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    titleBar.BorderSizePixel = 0
+
+    -- Create the title label
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "TitleLabel"
+    titleLabel.Parent = titleBar
+    titleLabel.Size = UDim2.new(1, 0, 1, 0)
+    titleLabel.Position = UDim2.new(0, 0, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = config.Name
+    titleLabel.TextColor3 = Color3.new(1, 1, 1)
+    titleLabel.Font = Enum.Font.GothamSemibold
+    titleLabel.TextSize = 14
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Padding = UDim.new(0, 8)
+
+    -- Create the content area
+    local contentFrame = Instance.new("ScrollingFrame")
+    contentFrame.Name = "ContentFrame"
+    contentFrame.Parent = mainFrame
+    contentFrame.Size = UDim2.new(1, 0, 1, -32)
+    contentFrame.Position = UDim2.new(0, 0, 0, 32)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.BorderSizePixel = 0
+    contentFrame.ScrollBarThickness = 4
+    contentFrame.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
+    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+    -- Create a layout for the content frame
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Parent = contentFrame
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 5)
+
+    -- Dragging logic
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    -- Return a table with the window's components and methods
+    return {
+        Gui = screenGui,
+        Window = mainFrame,
+        Content = contentFrame,
+        AddElement = function(element)
+            element.Parent = contentFrame
+            -- Update canvas size to fit new elements
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+        end,
+        Destroy = function()
+            screenGui:Destroy()
+        end
+    }
+end
+
+-- The library script should return the library table
+return library

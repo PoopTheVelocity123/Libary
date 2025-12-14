@@ -1,0 +1,128 @@
+local library = {}
+
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+function library:CreateWindow(config)
+    local windowName = config.Name or "LibraryWindow"
+    local cornerRadius = config.CornerRadius or 0
+    local iconId = config.Icon
+    local iconSize = config.IconSize or UDim2.new(0, 24, 0, 24)
+    local showTopBar = config.TopBar or false
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = windowName .. "_Gui"
+    screenGui.Parent = CoreGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Create the main frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Parent = screenGui
+    mainFrame.Size = config.Size or UDim2.new(0, 800, 0, 900)
+    mainFrame.Position = UDim2.new(0.5, -mainFrame.Size.X.Offset / 2, 0.5, -mainFrame.Size.Y.Offset / 2)
+    mainFrame.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+
+    -- Apply rounded corners using UICorner
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, cornerRadius)
+    corner.Parent = mainFrame
+
+    -- Create the icon if an IconId is provided
+    if iconId then
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.Parent = mainFrame
+        icon.BackgroundTransparency = 1
+        icon.BorderSizePixel = 0
+        icon.Image = iconId
+        icon.Size = iconSize
+        icon.Position = UDim2.new(0, 8, 0, 8)
+        icon.ZIndex = 2
+    end
+
+    -- Create the icon box if TopBar is enabled
+    if showTopBar then
+        local padding = 8
+        local boxHeight = iconSize.Y.Offset + (padding * 2)
+        local boxWidth = iconSize.X.Offset + (padding * 2)
+
+        -- Left line of the box
+        local leftLine = Instance.new("Frame")
+        leftLine.Parent = mainFrame
+        leftLine.Size = UDim2.new(0, 1, 0, boxHeight)
+        leftLine.Position = UDim2.new(0, 0, 0, 0)
+        leftLine.BackgroundColor3 = Color3.new(1, 1, 1)
+        leftLine.BorderSizePixel = 0
+        leftLine.ZIndex = 2
+
+        -- Right line of the box
+        local rightLine = Instance.new("Frame")
+        rightLine.Parent = mainFrame
+        rightLine.Size = UDim2.new(0, 1, 0, boxHeight)
+        rightLine.Position = UDim2.new(0, boxWidth, 0, 0)
+        rightLine.BackgroundColor3 = Color3.new(1, 1, 1)
+        rightLine.BorderSizePixel = 0
+        rightLine.ZIndex = 2
+
+        -- Top line of the box
+        local topLine = Instance.new("Frame")
+        topLine.Parent = mainFrame
+        topLine.Size = UDim2.new(0, boxWidth, 0, 1)
+        topLine.Position = UDim2.new(0, 0, 0, 0)
+        topLine.BackgroundColor3 = Color3.new(1, 1, 1)
+        topLine.BorderSizePixel = 0
+        topLine.ZIndex = 2
+
+        -- Bottom line of the box
+        local bottomLine = Instance.new("Frame")
+        bottomLine.Parent = mainFrame
+        bottomLine.Size = UDim2.new(0, boxWidth, 0, 1)
+        bottomLine.Position = UDim2.new(0, 0, 0, boxHeight - 1)
+        bottomLine.BackgroundColor3 = Color3.new(1, 1, 1)
+        bottomLine.BorderSizePixel = 0
+        bottomLine.ZIndex = 2
+    end
+
+    -- Dragging logic
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    return {
+        Gui = screenGui,
+        Window = mainFrame,
+        Destroy = function()
+            screenGui:Destroy()
+        end
+    }
+end
+
+return library

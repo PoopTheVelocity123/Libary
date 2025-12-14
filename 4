@@ -1,0 +1,97 @@
+local library = {}
+
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+-- Helper function to create a frame with rounded corners
+local function createRoundedFrame(name, size, position, color, cornerRadius)
+    local frame = Instance.new("Frame")
+    frame.Name = name
+    frame.Size = size
+    frame.Position = position
+    frame.BorderSizePixel = 0
+    frame.BackgroundTransparency = 1 -- Make the main frame transparent
+
+    local corner = Instance.new("ImageLabel")
+    corner.Name = "Corner"
+    corner.Parent = frame
+    corner.AnchorPoint = Vector2.new(0.5, 0.5)
+    corner.BackgroundTransparency = 1
+    corner.Image = "rbxassetid://266543268" -- A white circle asset
+    corner.ImageColor3 = color
+    corner.ScaleType = Enum.ScaleType.Slice
+    corner.SliceCenter = Rect.new(cornerRadius, cornerRadius, 256 - cornerRadius, 256 - cornerRadius)
+    corner.Size = UDim2.new(1, 0, 1, 0)
+    corner.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+    return frame
+end
+
+function library:CreateWindow(config)
+    local windowName = config.Name or "LibraryWindow"
+    local cornerRadius = config.CornerRadius or 0 -- Default to 0 if not set
+    
+    -- Destroy old GUI if it exists
+    local existingGui = CoreGui:FindFirstChild(windowName .. "_Gui")
+    if existingGui then
+        existingGui:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = windowName .. "_Gui"
+    screenGui.Parent = CoreGui
+
+    -- Create the main frame using our helper function
+    local mainFrame = createRoundedFrame(
+        "MainFrame",
+        config.Size or UDim2.new(0, 200, 0, 150),
+        UDim2.new(0.5, -(config.Size or UDim2.new(0, 200)).X.Offset / 2, 0.5, -(config.Size or UDim2.new(0, 200)).Y.Offset / 2),
+        Color3.new(0.5, 0.5, 0.5), -- Grey color
+        cornerRadius
+    )
+    mainFrame.Parent = screenGui
+    mainFrame.Active = true
+
+    -- Store the cornerRadius value for the dragging logic
+    mainFrame.CornerRadius = cornerRadius
+
+    -- Dragging logic
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    return {
+        Gui = screenGui,
+        Window = mainFrame,
+        Destroy = function()
+            screenGui:Destroy()
+        end
+    }
+end
+
+return library

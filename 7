@@ -1,0 +1,82 @@
+local library = {}
+
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+function library:CreateWindow(config)
+    local windowName = config.Name or "LibraryWindow"
+    local cornerRadius = config.CornerRadius or 0
+    local iconId = config.Icon -- Get the Icon ID from the config
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = windowName .. "_Gui"
+    screenGui.Parent = CoreGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Create the main frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Parent = screenGui
+    mainFrame.Size = config.Size or UDim2.new(0, 800, 0, 900)
+    mainFrame.Position = UDim2.new(0.5, -mainFrame.Size.X.Offset / 2, 0.5, -mainFrame.Size.Y.Offset / 2)
+    mainFrame.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+
+    -- Apply rounded corners using UICorner
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, cornerRadius)
+    corner.Parent = mainFrame
+
+    -- Create the icon if an IconId is provided
+    if iconId then
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.Parent = mainFrame
+        icon.BackgroundTransparency = 1
+        icon.BorderSizePixel = 0
+        icon.Image = iconId
+        icon.Size = UDim2.new(0, 24, 0, 24) -- Standard 24x24 icon size
+        icon.Position = UDim2.new(1, -32, 0, 8) -- Top-right corner with padding
+    end
+
+    -- Dragging logic
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    return {
+        Gui = screenGui,
+        Window = mainFrame,
+        Destroy = function()
+            screenGui:Destroy()
+        end
+    }
+end
+
+return library

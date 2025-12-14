@@ -1,0 +1,116 @@
+local library = {}
+
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+-- 1x1 white pixel (Roblox built-in)
+local WHITE_PIXEL = "rbxassetid://1"
+
+function library:CreateWindow(config)
+    local windowName = config.Name or "LibraryWindow"
+    local cornerRadius = config.CornerRadius or 0
+    local iconId = config.Icon
+    local iconSize = config.IconSize or UDim2.new(0, 24, 0, 24)
+    local showTopBar = config.TopBar or false
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = windowName .. "_Gui"
+    screenGui.Parent = CoreGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Main frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Parent = screenGui
+    mainFrame.Size = config.Size or UDim2.new(0, 800, 0, 900)
+    mainFrame.Position = UDim2.fromScale(0.5, 0.5)
+    mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, cornerRadius)
+    corner.Parent = mainFrame
+
+    -- Icon
+    if iconId then
+        local icon = Instance.new("ImageLabel")
+        icon.Parent = mainFrame
+        icon.BackgroundTransparency = 1
+        icon.BorderSizePixel = 0
+        icon.Image = iconId
+        icon.Size = iconSize
+        icon.Position = UDim2.new(0, 8, 0, 8)
+        icon.ZIndex = 2
+    end
+
+    -- Top bar lines
+    if showTopBar then
+        local padding = 8
+        local boxHeight = iconSize.Y.Offset + (padding * 2)
+
+        -- Right vertical line (1px, pixel perfect)
+        local rightLine = Instance.new("ImageLabel")
+        rightLine.Parent = mainFrame
+        rightLine.Image = WHITE_PIXEL
+        rightLine.BackgroundTransparency = 1
+        rightLine.BorderSizePixel = 0
+        rightLine.ImageColor3 = Color3.new(1, 1, 1)
+        rightLine.Size = UDim2.new(0, 1, 0, boxHeight)
+        rightLine.Position = UDim2.new(0, boxHeight, 0, 0)
+        rightLine.ZIndex = 2
+        rightLine.ScaleType = Enum.ScaleType.Stretch
+
+        -- Bottom horizontal line (same 1px thickness)
+        local bottomLine = Instance.new("ImageLabel")
+        bottomLine.Parent = mainFrame
+        bottomLine.Image = WHITE_PIXEL
+        bottomLine.BackgroundTransparency = 1
+        bottomLine.BorderSizePixel = 0
+        bottomLine.ImageColor3 = Color3.new(1, 1, 1)
+        bottomLine.Size = UDim2.new(1, 0, 0, 1)
+        bottomLine.Position = UDim2.new(0, 0, 0, boxHeight)
+        bottomLine.ZIndex = 2
+        bottomLine.ScaleType = Enum.ScaleType.Stretch
+    end
+
+    -- Dragging
+    local dragging = false
+    local dragStart, startPos
+
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    return {
+        Gui = screenGui,
+        Window = mainFrame,
+        Destroy = function()
+            screenGui:Destroy()
+        end
+    }
+end
+
+return library
